@@ -319,6 +319,7 @@ final class FelixApp: NSObject, NSApplicationDelegate {
         // it never suppresses or rewrites the user's original event.
         let mask = (CGEventMask(1) << CGEventType.flagsChanged.rawValue)
             | (CGEventMask(1) << CGEventType.leftMouseDown.rawValue)
+            | (CGEventMask(1) << CGEventType.keyDown.rawValue)
         let refcon = Unmanaged.passUnretained(self).toOpaque()
         let callback: CGEventTapCallBack = { _, type, event, refcon in
             guard let refcon else { return Unmanaged.passUnretained(event) }
@@ -338,8 +339,23 @@ final class FelixApp: NSObject, NSApplicationDelegate {
                 DispatchQueue.main.async {
                     cancelOptionActivation(app)
                     app.optionMouseIntent = true
-                    app.log("CGEventTap Option mouseDown")
+                    app.log("Option mouseDown")
                     app.beginSelection(initialPoint: NSEvent.mouseLocation)
+                }
+            } else if type == .keyDown {
+                let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
+                let option = event.flags.contains(.maskAlternate)
+                DispatchQueue.main.async {
+                    cancelOptionActivation(app)
+                    if keyCode == 7, SpeechOutput.isSpeaking {
+                        SpeechOutput.stop()
+                        app.log("speech stopped by X")
+                        app.responsePanel.show("speech stopped.", title: "Felix")
+                    } else if option && keyCode == 49 {
+                        app.quickAsk()
+                    } else if option && keyCode == 3 {
+                        app.beginSelection(initialPoint: nil)
+                    }
                 }
             }
             return Unmanaged.passUnretained(event)
@@ -353,6 +369,20 @@ final class FelixApp: NSObject, NSApplicationDelegate {
             userInfo: refcon
         )
         if let eventTap {
+            // A session tap and NSEvent monitors are two independent event
+            // delivery paths. Keeping both active caused one physical Option
+            // gesture to start multiple selections/requests, which appeared
+            // as repeated target boxes and repeated browser actions. The tap
+            // is the primary path; remove the monitors once it is live.
+            for monitor in [globalMonitor, localMonitor, globalMouseMonitor, localMouseMonitor, globalKeyMonitor, localKeyMonitor] {
+                if let monitor { NSEvent.removeMonitor(monitor) }
+            }
+            globalMonitor = nil
+            localMonitor = nil
+            globalMouseMonitor = nil
+            localMouseMonitor = nil
+            globalKeyMonitor = nil
+            localKeyMonitor = nil
             eventTapSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, eventTap, 0)
             if let eventTapSource { CFRunLoopAddSource(CFRunLoopGetMain(), eventTapSource, .commonModes) }
             CGEvent.tapEnable(tap: eventTap, enable: true)
@@ -475,6 +505,13 @@ final class FelixApp: NSObject, NSApplicationDelegate {
     }
 
     private func startAnswer(image: Data, question: String, screenContext: String, selection: NSRect?, screen: NSScreen?) {
+        // A cancelled speech/capture turn can still deliver a late callback.
+        // Never let that callback start a second request after the active turn
+        // has already been cleared.
+        guard requestInFlight else {
+            log("ignored stale answer callback")
+            return
+        }
         answerTask?.cancel()
         let turnID = UUID()
         activeTurnID = turnID

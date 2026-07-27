@@ -7,8 +7,18 @@ on:
 jobs:
   swift:
     runs-on: macos-14
+    # GitHub-hosted macOS runners can expose a read-only or polluted global
+    # Swift/Clang module cache. Keep all package state inside the runner's
+    # writable temporary directory so a clean checkout behaves like CI.
+    env:
+      SWIFT_PACKAGE_CONFIG_DIR: ${{ runner.temp }}/felix-swiftpm-config
+      SWIFT_MODULECACHE_PATH: ${{ runner.temp }}/felix-swift-module-cache
+      SWIFTPM_MODULECACHE_OVERRIDE: ${{ runner.temp }}/felix-swift-module-cache
+      CLANG_MODULE_CACHE_PATH: ${{ runner.temp }}/felix-clang-module-cache
     steps:
       - uses: actions/checkout@v4
+      - name: Prepare writable Swift caches
+        run: mkdir -p "$SWIFT_PACKAGE_CONFIG_DIR" "$SWIFT_MODULECACHE_PATH" "$CLANG_MODULE_CACHE_PATH"
       - name: Test
         run: swift test --disable-sandbox
       - name: Shell syntax

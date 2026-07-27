@@ -86,6 +86,14 @@ final class FelixTests: XCTestCase {
         XCTAssertNil(FelixTargetResolver.resolve(question: "where is the new chat button?", context: context))
     }
 
+    func testTargetResolverUsesUniqueOCRControlFallback() {
+        let context = "text=New chat | center_top_left=(84,96)"
+        let pointer = FelixTargetResolver.resolve(question: "where is the new chat button?", context: context)
+        XCTAssertEqual(pointer?.label, "New chat")
+        XCTAssertEqual(pointer?.x, 84)
+        XCTAssertEqual(pointer?.y, 96)
+    }
+
     func testTeachingAnswerIsConcreteAndShort() {
         let pointer = FelixPointer(x: 100, y: 200, label: "New chat", style: "target")
         XCTAssertEqual(FelixLocalAnswerRouter.teachingAnswer(for: "can you teach me how to open a new chat", pointer: pointer), "i’ll teach you: look at new chat, then click it to start a new chat.")

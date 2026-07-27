@@ -25,14 +25,17 @@ struct FelixTargetResolver: Sendable {
             score += roleIsControl ? 70 : 0
             if newChat {
                 // A phrase in page prose or in Felix's surrounding chat is
-                // not a control. For the high-risk "where is ..." path,
-                // accept AX only when it identifies an interactive role.
-                // OCR remains a fallback below, but never competes with a
-                // real accessibility control.
-                if sourceIsAX && !roleIsControl { continue }
-                if normalizedLine.contains("new chat") { score += 300 }
-                else if normalizedLine.contains("new conversation") { score += 260 }
-                else if normalizedLine.contains("start chat") || normalizedLine.contains("new thread") { score += 210 }
+                // not a control. Prefer an interactive Accessibility element,
+                // but allow one unique OCR control as the fallback for apps
+                // (notably browsers) that do not expose their DOM to AX.
+                if sourceIsAX {
+                    guard roleIsControl else { continue }
+                } else {
+                    guard line.contains("text=") else { continue }
+                }
+                if normalizedLine.contains("new chat") { score += sourceIsAX ? 300 : 240 }
+                else if normalizedLine.contains("new conversation") { score += sourceIsAX ? 260 : 220 }
+                else if normalizedLine.contains("start chat") || normalizedLine.contains("new thread") { score += sourceIsAX ? 210 : 200 }
                 else { continue }
             } else {
                 let hits = requested.filter { normalizedLine.contains($0) }
