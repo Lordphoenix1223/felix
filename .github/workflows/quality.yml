@@ -2,11 +2,25 @@ name: quality
 
 on:
   push:
+    branches:
+      - main
   pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   swift:
+    name: Swift and release quality
     runs-on: macos-14
+    timeout-minutes: 15
     # GitHub-hosted macOS runners can expose a read-only or polluted global
     # Swift/Clang module cache. Keep all package state inside the runner's
     # writable temporary directory so a clean checkout behaves like CI.
@@ -17,6 +31,12 @@ jobs:
       CLANG_MODULE_CACHE_PATH: ${{ runner.temp }}/felix-clang-module-cache
     steps:
       - uses: actions/checkout@v4
+      - name: Confirm runner startup
+        run: |
+          set -euo pipefail
+          echo "runner=$(uname -a)"
+          echo "swift=$(swift --version | head -n 1)"
+          test -f Package.swift
       - name: Prepare writable Swift caches
         run: mkdir -p "$SWIFT_PACKAGE_CONFIG_DIR" "$SWIFT_MODULECACHE_PATH" "$CLANG_MODULE_CACHE_PATH"
       - name: Test
