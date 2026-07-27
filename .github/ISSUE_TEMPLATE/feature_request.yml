@@ -1,0 +1,25 @@
+name: Feature request
+description: Suggest a focused improvement to Felix.
+title: "[feature] "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: User problem
+      description: What task is currently difficult, slow, or unreliable?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety and privacy
+      options:
+        - label: This proposal does not require publishing credentials or private user context.
+          required: true

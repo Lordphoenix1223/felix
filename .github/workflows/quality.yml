@@ -1,0 +1,17 @@
+name: quality
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  swift:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test
+        run: swift test --disable-sandbox
+      - name: Shell syntax
+        run: bash -n scripts/*.sh Launch-Felix.command
+      - name: Public release audit
+        run: ./scripts/public-audit.sh

@@ -1,0 +1,17 @@
+.build/
+.swiftpm/
+DerivedData/
+dist/
+.env
+felix-launch.log
+.DS_Store
+outputs/
+work/
+.vendor/
+.venv-*/
+*.xcuserstate
+*.swp
+*.crash
+*.trace
+screen-fixtures/private/
+.felix/
