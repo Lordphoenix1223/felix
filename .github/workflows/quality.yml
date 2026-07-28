@@ -14,7 +14,8 @@ permissions:
 
 concurrency:
   group: quality-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Keep pushes and manual runs from cancelling each other before a job starts.
+  cancel-in-progress: false
 
 jobs:
   swift:
